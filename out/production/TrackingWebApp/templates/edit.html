@@ -3,13 +3,15 @@
 <body>
 
 {{#username}}
-Welcome, {{.}}!
+Edit your song, {{.}}!
 <form action="/logout" method="post">
     <button type="submit">Logout</button>
 </form>
 <br>
 
-<form action="/create-song" method="post">
+{{songName}} : {{songArtist}} - {{songAlbum}} - {{songGenre}} - {{songYear}}
+
+<form action="/edit-song/{{songId}}" method="post">
     <input type="text" placeholder="Song name" name="songName" width="200"/>
     <input type="text" placeholder="Song artist" name="songArtist" width="200"/>
     <input type="text" placeholder="Song album" name="songAlbum" width="200"/>
@@ -29,15 +31,3 @@ Welcome, {{.}}!
 </form>
 {{/username}}
 
-<ol>
-    {{#songsList}}
-    <li>{{name}} : {{artist}} : {{album}} - {{genre}} - {{year}} <a href="/edit/{{id}}">Edit</a></li>
-    <input type="text" value="{{id}}" name="songId"/>
-    </form>
-    {{/songsList}}
-</ol>
-
-
-
-</body>
-</html>

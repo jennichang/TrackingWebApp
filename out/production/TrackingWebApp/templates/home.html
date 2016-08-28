@@ -31,8 +31,13 @@ Welcome, {{.}}!
 
 <ol>
     {{#songsList}}
-    <li>{{name}} : {{artist}} : {{album}} - {{genre}} - {{year}}</li> <button type="submit">Delete Song</button>
+    <li>{{name}} : {{artist}} : {{album}} - {{genre}} - {{year}} <a href="/edit/{{id}}">Edit</a></li>
+    <input type="text" value="{{id}}" name="songId"/>
+    </form>
     {{/songsList}}
 </ol>
+
+
+
 </body>
 </html>

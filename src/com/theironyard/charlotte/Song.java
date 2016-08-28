@@ -1,10 +1,13 @@
 package com.theironyard.charlotte;
 
+import java.util.ArrayList;
+
 /**
  * Created by jenniferchang on 8/25/16.
  */
 public class Song {
-    static int id = 0;
+    int id = 0;
+    static int songCount = 0;
     String name;
     String artist;
     String album;
@@ -17,6 +20,7 @@ public class Song {
         this.album = album;
         this.genre = genre;
         this.year = year;
-        this.id = id++;
+        this.id = songCount++;
     }
+
 }

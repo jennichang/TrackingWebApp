@@ -23,6 +23,7 @@ public class Main {
                 ((request, response) -> {
                     Session session = request.session(); // get reference to our current session
                     String name = session.attribute("username"); // get username from session
+                    String songId = request.queryParams("songId"); // try to get key replyId and give me its value
                     User userObj = usersMap.get(name); // create a user object and it equals the value in the users hashmap (of that name)
 
                     HashMap m = new HashMap<>(); // create model hashmap
@@ -33,8 +34,39 @@ public class Main {
                     else {
                         m.put("username", name); // pass username to home html template
                         m.put("songsList", userObj.songsList); // why can't this work on line29?
+                        m.put("songId", songId);
                         return new ModelAndView(m, "home.html"); //otherwise takes them to messages
                     }
+                }),
+                new MustacheTemplateEngine()
+        );
+
+
+        Spark.get("/edit/:songId" ,
+                ((request, response) -> {
+                    Session session = request.session();
+                    String name = session.attribute("username");
+                    int songId = Integer.valueOf(request.params("songId"));
+
+                    User userObj = usersMap.get(name);
+
+                    String songName = userObj.songsList.get(songId).name;
+                    String songArtist = userObj.songsList.get(songId).artist;
+                    String songAlbum = userObj.songsList.get(songId).album;
+                    String songGenre = userObj.songsList.get(songId).genre;
+                    int songYear = userObj.songsList.get(songId).year;
+
+                    HashMap m = new HashMap<>(); // create model hashmap
+
+                    m.put("username", name);
+                    m.put("songName", songName);
+                    m.put("songId", songId);
+                    m.put("songArtist", songArtist);
+                    m.put("songAlbum", songAlbum);
+                    m.put("songGenre", songGenre);
+                    m.put("songYear", songYear);
+                        return new ModelAndView(m, "edit.html");
+
                 }),
                 new MustacheTemplateEngine()
         );
@@ -66,6 +98,16 @@ public class Main {
         );
 
         Spark.post(
+                "/logout",
+                ((request, response) -> {
+                    Session session = request.session(); // have current session
+                    session.invalidate(); // invalidate it
+                    response.redirect("/"); // redirect
+                    return "";
+                })
+        );
+
+        Spark.post(
                 "/create-song",
                 ((request, response) -> {
                     Session session = request.session();
@@ -74,7 +116,7 @@ public class Main {
                     if (userObject == null) { // if no user
                         throw new Exception("User is not logged in"); // throw exception
                     }
-                    
+
                     String songName = request.queryParams("songName");
                     String songArtist = request.queryParams("songArtist");
                     String songAlbum = request.queryParams("songAlbum");
@@ -91,55 +133,42 @@ public class Main {
         );
 
         Spark.post(
-                "/delete-message",
+                "/edit-song/:songId" ,
                 ((request, response) -> {
                     Session session = request.session();
-                    String name = session.attribute("username");
-                    User user = usersMap.get(name);
-//
-//                    int messageDelete = Integer.valueOf(request.queryParams("messageDelete"));
-//
-//                    user.messagesList.remove(messageDelete - 1); // minus 1 to remove based on index
+                    String name = session.attribute("username"); // getting current session, asking who are you?
+                    int id = Integer.valueOf(request.params("songId"));
+                    User userObject = usersMap.get(name); // getting current user
 
-                    response.redirect("/");
+//                    int songId = Integer.valueOf(request.params("songId"));
+
+                    String songName = request.queryParams("songName");
+                    String songArtist = request.queryParams("songArtist");
+                    String songAlbum = request.queryParams("songAlbum");
+                    String songGenre = request.queryParams("songGenre");
+                    int songYear = Integer.valueOf(request.queryParams("songYear"));
+
+                    Song editedSong = new Song(songName, songArtist, songAlbum, songGenre, songYear); // create a new message object
+                    // with edited information
+
+                    userObject.songsList.set(id, editedSong); // replace old object with new
+
+                    String referrer = request.headers("Referrer");
+                    response.redirect(referrer != null ? referrer : "/");
                     return "";
                 })
+
         );
 
-//
-//        Spark.post(
-//                "/edit-message",
-//                ((request, response) -> {
-//                    Session session = request.session();
-//                    String name = session.attribute("username");
-//                    User user = usersMap.get(name);
-//
-//                    int messageDelete = Integer.valueOf(request.queryParams("messageEditNumber"));
-//                    String subjectEdit = request.queryParams("subjectEdit");
-//                    String dateEdit = request.queryParams("dateEdit");
-//                    String messageEdit = request.queryParams("messageEdit");
-//
-//                    Message newMessage = new Message(subjectEdit, dateEdit, messageEdit); // create a new message object
-//                    // with edited information
-//
-//                    user.messagesList.set(messageDelete - 1, newMessage); // replace old object with new
-//
-//                    response.redirect("/");
-//                    return "";
-//                })
-//        );
-
-        Spark.post(
-                "/logout",
-                ((request, response) -> {
-                    Session session = request.session(); // have current session
-                    session.invalidate(); // invalidate it
-                    response.redirect("/"); // redirect
-                    return "";
-                })
-        );
     }
 }
 
 
 // --> "/update-card/:id"
+
+/*
+
+Card card = user.cardList.stream().filter(c -> c.id == Integer.valueOf(request.params(":id"))).findFirst
+
+
+ */
