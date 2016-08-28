@@ -72,6 +72,36 @@ public class Main {
         );
 
 
+        Spark.get("/delete/:songId" ,
+                ((request, response) -> {
+                    Session session = request.session();
+                    String name = session.attribute("username");
+                    int songId = Integer.valueOf(request.params("songId"));
+
+                    User userObj = usersMap.get(name);
+
+                    String songName = userObj.songsList.get(songId).name;
+                    String songArtist = userObj.songsList.get(songId).artist;
+                    String songAlbum = userObj.songsList.get(songId).album;
+                    String songGenre = userObj.songsList.get(songId).genre;
+                    int songYear = userObj.songsList.get(songId).year;
+
+                    HashMap m = new HashMap<>(); // create model hashmap
+
+                    m.put("username", name);
+                    m.put("songName", songName);
+                    m.put("songId", songId);
+                    m.put("songArtist", songArtist);
+                    m.put("songAlbum", songAlbum);
+                    m.put("songGenre", songGenre);
+                    m.put("songYear", songYear);
+                    return new ModelAndView(m, "delete.html");
+
+                }),
+                new MustacheTemplateEngine()
+        );
+
+
         Spark.post(
                 "/login",
                 ((request, response) -> {
@@ -133,14 +163,12 @@ public class Main {
         );
 
         Spark.post(
-                "/edit-song/:songId" ,
+                "/edit-song/:songId",
                 ((request, response) -> {
                     Session session = request.session();
                     String name = session.attribute("username"); // getting current session, asking who are you?
                     int id = Integer.valueOf(request.params("songId"));
                     User userObject = usersMap.get(name); // getting current user
-
-//                    int songId = Integer.valueOf(request.params("songId"));
 
                     String songName = request.queryParams("songName");
                     String songArtist = request.queryParams("songArtist");
@@ -148,8 +176,11 @@ public class Main {
                     String songGenre = request.queryParams("songGenre");
                     int songYear = Integer.valueOf(request.queryParams("songYear"));
 
-                    Song editedSong = new Song(songName, songArtist, songAlbum, songGenre, songYear); // create a new message object
-                    // with edited information
+                    Song editedSong = new Song(songName, songArtist, songAlbum, songGenre, songYear);
+
+                    if(editedSong.id != id) {
+                        editedSong.id = id;
+                    }
 
                     userObject.songsList.set(id, editedSong); // replace old object with new
 
@@ -160,8 +191,34 @@ public class Main {
 
         );
 
+        Spark.post(
+                "/delete-song/:songId",
+                ((request, response) -> {
+                    Session session = request.session();
+                    String name = session.attribute("username"); // getting current session, asking who are you?
+                    int id = Integer.valueOf(request.params("songId"));
+                    User userObject = usersMap.get(name); // getting current user
+
+                    userObject.songsList.remove(id); // minus 1 to remove based on index
+
+                    String referrer = request.headers("Referrer");
+                    response.redirect(referrer != null ? referrer : "/");
+                    return "";
+                })
+
+        );
+
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 // --> "/update-card/:id"
