@@ -6,7 +6,11 @@ import spark.Session;
 import spark.Spark;
 import spark.template.mustache.MustacheTemplateEngine;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+
+import static java.util.Comparator.comparing;
 
 public class Main {
 
@@ -21,21 +25,21 @@ public class Main {
         Spark.get(
                 "/", // relative path (homepage)
                 ((request, response) -> {
-                    Session session = request.session(); // get reference to our current session
-                    String name = session.attribute("username"); // get username from session
-                    String songId = request.queryParams("songId"); // try to get key replyId and give me its value
-                    User userObj = usersMap.get(name); // create a user object and it equals the value in the users hashmap (of that name)
+                    Session session = request.session();
+                    String name = session.attribute("username");
+                    String songId = request.queryParams("songId");
+                    User userObj = usersMap.get(name);
 
-                    HashMap m = new HashMap<>(); // create model hashmap
+                    HashMap m = new HashMap<>();
 
-                    if (userObj == null) { // if the user object is null
-                        return new ModelAndView(m, "login.html"); // return the login page
+                    if (userObj == null) {
+                        return new ModelAndView(m, "login.html");
                     }
                     else {
-                        m.put("username", name); // pass username to home html template
-                        m.put("songsList", userObj.songsList); // why can't this work on line29?
+                        m.put("username", name);
+                        m.put("songsList", userObj.songsList);
                         m.put("songId", songId);
-                        return new ModelAndView(m, "home.html"); //otherwise takes them to messages
+                        return new ModelAndView(m, "home.html");
                     }
                 }),
                 new MustacheTemplateEngine()
@@ -56,16 +60,16 @@ public class Main {
                     String songGenre = userObj.songsList.get(songId).genre;
                     int songYear = userObj.songsList.get(songId).year;
 
-                    HashMap m = new HashMap<>(); // create model hashmap
+                    HashMap p = new HashMap<>(); // create model hashmap
 
-                    m.put("username", name);
-                    m.put("songName", songName);
-                    m.put("songId", songId);
-                    m.put("songArtist", songArtist);
-                    m.put("songAlbum", songAlbum);
-                    m.put("songGenre", songGenre);
-                    m.put("songYear", songYear);
-                        return new ModelAndView(m, "edit.html");
+                    p.put("username", name);
+                    p.put("songName", songName);
+                    p.put("songId", songId);
+                    p.put("songArtist", songArtist);
+                    p.put("songAlbum", songAlbum);
+                    p.put("songGenre", songGenre);
+                    p.put("songYear", songYear);
+                        return new ModelAndView(p, "edit.html");
 
                 }),
                 new MustacheTemplateEngine()
@@ -86,16 +90,16 @@ public class Main {
                     String songGenre = userObj.songsList.get(songId).genre;
                     int songYear = userObj.songsList.get(songId).year;
 
-                    HashMap m = new HashMap<>(); // create model hashmap
+                    HashMap d = new HashMap<>(); // create model hashmap
 
-                    m.put("username", name);
-                    m.put("songName", songName);
-                    m.put("songId", songId);
-                    m.put("songArtist", songArtist);
-                    m.put("songAlbum", songAlbum);
-                    m.put("songGenre", songGenre);
-                    m.put("songYear", songYear);
-                    return new ModelAndView(m, "delete.html");
+                    d.put("username", name);
+                    d.put("songName", songName);
+                    d.put("songId", songId);
+                    d.put("songArtist", songArtist);
+                    d.put("songAlbum", songAlbum);
+                    d.put("songGenre", songGenre);
+                    d.put("songYear", songYear);
+                    return new ModelAndView(d, "delete.html");
 
                 }),
                 new MustacheTemplateEngine()
@@ -105,21 +109,20 @@ public class Main {
         Spark.post(
                 "/login",
                 ((request, response) -> {
-                    String name = request.queryParams("loginName");  // get name trying to log in as
-                    String password = request.queryParams("password"); // get password
-                    User userObj = usersMap.get(name); // reference hashmap at that name, key is name value is user object
+                    String name = request.queryParams("loginName");
+                    String password = request.queryParams("password");
+                    User userObj = usersMap.get(name);
 
                     if ((userObj == null) || (userObj != null && usersMap.get(name).getPassword().equals(password))) {
-                        // if userObj is null OR not null and password is correct
-                        if (userObj == null) { // if user is null
-                            userObj = new User(name, password); // create object and put in hashmap
-                            usersMap.putIfAbsent(name, userObj); // don't really need put if absent, but...just in case?
+                        if (userObj == null) {
+                            userObj = new User(name, password);
+                            usersMap.putIfAbsent(name, userObj);
                         }
-                        Session session = request.session(); // both will - set our session in reference to current users name
+                        Session session = request.session();
                         session.attribute("username", name);
-                        response.redirect("/"); // then redirect
+                        response.redirect("/");
                     } else {
-                        if (usersMap.get(name).getPassword() != password) { // if password is not correct, do not start a session and just redirect
+                        if (usersMap.get(name).getPassword() != password) {
                             response.redirect("/");
                         }
                     }
@@ -130,9 +133,9 @@ public class Main {
         Spark.post(
                 "/logout",
                 ((request, response) -> {
-                    Session session = request.session(); // have current session
-                    session.invalidate(); // invalidate it
-                    response.redirect("/"); // redirect
+                    Session session = request.session();
+                    session.invalidate();
+                    response.redirect("/");
                     return "";
                 })
         );
@@ -141,10 +144,10 @@ public class Main {
                 "/create-song",
                 ((request, response) -> {
                     Session session = request.session();
-                    String name = session.attribute("username"); // getting current session, asking who are you?
-                    User userObject = usersMap.get(name); // getting current user
+                    String name = session.attribute("username");
+                    User userObject = usersMap.get(name);
                     if (userObject == null) { // if no user
-                        throw new Exception("User is not logged in"); // throw exception
+                        throw new Exception("User is not logged in");
                     }
 
                     String songName = request.queryParams("songName");
@@ -153,11 +156,32 @@ public class Main {
                     String songGenre = request.queryParams("songGenre");
                     int songYear = Integer.valueOf(request.queryParams("songYear"));
 
-                    Song songObj = new Song(songName, songArtist, songAlbum, songGenre, songYear); // put that data into new message object
+                    Song songObj = new Song(songName, songArtist, songAlbum, songGenre, songYear);
 
-                    userObject.songsList.add(songObj); // add that message object to the message array of that user object
+                    int maxId = -1;
 
-                    response.redirect("/"); //redirect
+                    for(int i = 0; i < userObject.songsList.size();i++) {
+                        if(userObject.songsList.get(i).id > maxId) {
+                            maxId = userObject.songsList.get(i).id;
+                        }
+                    }
+
+//                    ArrayList<Song> userSongstemp = new ArrayList<Song>();
+//                    userSongstemp.add(songObj);
+//
+//                    String whatAmIDoing = String.valueOf(userSongstemp.stream().max(comparing(Song::getId)).get());
+//
+//                    int maxId = whatAmIDoing.charAt(0);
+//
+                    if(songObj.id != maxId+1) {
+                        songObj.id = maxId+1;
+                    }
+
+                    userObject.songsList.add(songObj);
+
+                    //ArrayList<Song> userSongs = (ArrayList<Song>) userObject.songsList.clone();
+
+                    response.redirect("/");
                     return "";
                 })
         );
@@ -166,9 +190,9 @@ public class Main {
                 "/edit-song/:songId",
                 ((request, response) -> {
                     Session session = request.session();
-                    String name = session.attribute("username"); // getting current session, asking who are you?
+                    String name = session.attribute("username");
                     int id = Integer.valueOf(request.params("songId"));
-                    User userObject = usersMap.get(name); // getting current user
+                    User userObject = usersMap.get(name);
 
                     String songName = request.queryParams("songName");
                     String songArtist = request.queryParams("songArtist");
@@ -182,7 +206,7 @@ public class Main {
                         editedSong.id = id;
                     }
 
-                    userObject.songsList.set(id, editedSong); // replace old object with new
+                    userObject.songsList.set(id, editedSong);
 
                     String referrer = request.headers("Referrer");
                     response.redirect(referrer != null ? referrer : "/");
@@ -195,11 +219,23 @@ public class Main {
                 "/delete-song/:songId",
                 ((request, response) -> {
                     Session session = request.session();
-                    String name = session.attribute("username"); // getting current session, asking who are you?
+                    String name = session.attribute("username");
                     int id = Integer.valueOf(request.params("songId"));
-                    User userObject = usersMap.get(name); // getting current user
+                    User userObject = usersMap.get(name);
 
-                    userObject.songsList.remove(id); // minus 1 to remove based on index
+                   //ArrayList<Song> keepSongId = (ArrayList<Song>) userObject.songsList.clone();
+
+                    for(int i = 0; i < userObject.songsList.size(); i++) {
+                        if(userObject.songsList.get(i).id == id) {
+                            userObject.songsList.remove(i);
+                        }
+                    }
+
+                    for(int i = 0; i < userObject.songsList.size(); i++) {
+                        if(userObject.songsList.get(i).id > id) {
+                            userObject.songsList.get(i).id = userObject.songsList.get(i).id - 1;
+                        }
+                        }
 
                     String referrer = request.headers("Referrer");
                     response.redirect(referrer != null ? referrer : "/");

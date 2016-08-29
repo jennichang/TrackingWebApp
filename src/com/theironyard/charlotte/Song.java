@@ -23,4 +23,16 @@ public class Song {
         this.id = songCount++;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+//    @Override
+//    public String toString() {
+//        return String.format(id + " " + name + " " + artist + " " +  album + " " +  genre + " " +  year + " ");
+//    }
 }
