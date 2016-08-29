@@ -50,7 +50,7 @@ public class Main {
                 ((request, response) -> {
                     Session session = request.session();
                     String name = session.attribute("username");
-                    int songId = Integer.valueOf(request.params("songId"));
+                    int songId = Integer.valueOf(request.params("songId")); // needed request.params and not request.queryParams
 
                     User userObj = usersMap.get(name);
 
@@ -158,6 +158,9 @@ public class Main {
 
                     Song songObj = new Song(songName, songArtist, songAlbum, songGenre, songYear);
 
+                    //Ok - to fix the bug of ids screwing up after deleting an entry.  If the new song created's id is not the max id
+                    // I will make it the current maxId + 1. Find the current maxId, and then increment new song ID by 1
+
                     int maxId = -1;
 
                     for(int i = 0; i < userObject.songsList.size();i++) {
@@ -178,8 +181,6 @@ public class Main {
                     }
 
                     userObject.songsList.add(songObj);
-
-                    //ArrayList<Song> userSongs = (ArrayList<Song>) userObject.songsList.clone();
 
                     response.redirect("/");
                     return "";
@@ -204,7 +205,7 @@ public class Main {
 
                     if(editedSong.id != id) {
                         editedSong.id = id;
-                    }
+                    } // to fix the bug of ids changing after song is edited...just revert back to original id
 
                     userObject.songsList.set(id, editedSong);
 
@@ -231,6 +232,8 @@ public class Main {
                         }
                     }
 
+                    // in order to keep the ids the same, and not have the list shift up...anything before the deleted item stays the same
+                    // but anything after has to be shifted by -1
                     for(int i = 0; i < userObject.songsList.size(); i++) {
                         if(userObject.songsList.get(i).id > id) {
                             userObject.songsList.get(i).id = userObject.songsList.get(i).id - 1;
