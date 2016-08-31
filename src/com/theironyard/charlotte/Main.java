@@ -1,11 +1,19 @@
 package com.theironyard.charlotte;
 
 import com.sun.tools.internal.xjc.reader.xmlschema.bindinfo.BIConversion;
+import org.h2.store.Data;
+import org.h2.store.DataReader;
+import org.h2.tools.Server;
 import spark.ModelAndView;
 import spark.Session;
 import spark.Spark;
 import spark.template.mustache.MustacheTemplateEngine;
 
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -16,11 +24,18 @@ public class Main {
 
     static HashMap<String, User> usersMap = new HashMap<>();
 
-    public static void main(String[] args) {
+    public static void createTables(Connection conn) throws SQLException { // create users and songs table.  will join through u.id = s.userId
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id IDENTITY, name VARCHAR, password VARCHAR)");
+        stmt.execute
+                ("CREATE TABLE IF NOT EXISTS songs (id IDENTITY, userId INT, name NVARCHAR, artist NVARCHAR, album NVARCHAR, genre NVARCHAR, year INT)");
+    }
 
-        usersMap.put("Jennifer", new User("Jennifer", "abc")); // this is just to test
-        usersMap.put("Alice", new User("Alice", "123")); // this is just to test
-        usersMap.put("Charlie", new User("Charlie", "qwe")); // this is just to test
+
+    public static void main(String[] args) throws SQLException {
+        Server.createWebServer().start();
+        Connection conn = DriverManager.getConnection("jdbc:h2:./main");
+        createTables(conn); // establish connection and create the 2 tables
 
         Spark.get(
                 "/", // relative path (homepage)
@@ -28,16 +43,16 @@ public class Main {
                     Session session = request.session();
                     String name = session.attribute("username");
                     String songId = request.queryParams("songId");
-                    User userObj = usersMap.get(name);
+                    User userObj = DataRepository.selectUser(conn, name); // this will have their name and password - create a user object
 
-                    HashMap m = new HashMap<>();
+                    HashMap m = new HashMap<>(); // model hashmap
 
                     if (userObj == null) {
                         return new ModelAndView(m, "login.html");
-                    }
-                    else {
+                    } else {
                         m.put("username", name);
-                        m.put("songsList", userObj.songsList);
+                        m.put("songsList", DataRepository.selectUserSongs(conn, name)); // use selectusersongs
+                        // method to spit out an arraylist of all their songs (as objects)
                         m.put("songId", songId);
                         return new ModelAndView(m, "home.html");
                     }
@@ -46,53 +61,143 @@ public class Main {
         );
 
 
-        Spark.get("/edit/:songId" ,
+        Spark.post(
+                "/login",
+                ((request, response) -> {
+                    String name = request.queryParams("loginName");
+                    String password = request.queryParams("password");
+                    User userObj = DataRepository.selectUser(conn, name);
+
+                    if ((userObj == null) || (userObj != null && userObj.getPassword().equals(password))) {
+                        if (userObj == null) {
+                            DataRepository.insertUser(conn, name, password); // if user is null, insert that user into users table
+                        }
+                        Session session = request.session();
+                        session.attribute("username", name);
+                        response.redirect("/");
+                    } else {
+                        if (userObj.getPassword() != password) {
+                            response.redirect("/");
+                        }
+                    }
+                    return "";
+                })
+        );
+
+
+        Spark.post(
+                "/logout",
+                ((request, response) -> {
+                    Session session = request.session();
+                    session.invalidate();
+                    response.redirect("/");
+                    return "";
+                })
+        );
+
+
+        Spark.post(
+                "/create-song",
+                ((request, response) -> {
+                    Session session = request.session();
+                    String name = session.attribute("username");
+                    User userObj = DataRepository.selectUser(conn, name);
+                    if (userObj == null) {
+                        throw new Exception("User is not logged in");
+                    }
+
+                    int userId = userObj.getId(); // will need to get the user ID in order to join users table and songs table.
+                    // instead of changing songs.userId to songs.username, joining on strings more costly
+                    String songName = request.queryParams("songName");
+                    String songArtist = request.queryParams("songArtist");
+                    String songAlbum = request.queryParams("songAlbum");
+                    String songGenre = request.queryParams("songGenre");
+                    int songYear = Integer.valueOf(request.queryParams("songYear"));
+
+                    DataRepository.insertSong(conn, userId, songName, songArtist, songAlbum, songGenre, songYear); // take song and add it to songs table
+
+                    response.redirect("/");
+                    return "";
+                })
+        );
+
+
+        Spark.get("/edit/:songId",
                 ((request, response) -> {
                     Session session = request.session();
                     String name = session.attribute("username");
                     int songId = Integer.valueOf(request.params("songId")); // needed request.params and not request.queryParams
+                    User userObj = DataRepository.selectUser(conn, name);
+                    int userId = userObj.getId();
 
-                    User userObj = usersMap.get(name);
+                    Song songEdit = DataRepository.selectUserSingleSong(conn, songId, userId);
 
-                    String songName = userObj.songsList.get(songId).name;
-                    String songArtist = userObj.songsList.get(songId).artist;
-                    String songAlbum = userObj.songsList.get(songId).album;
-                    String songGenre = userObj.songsList.get(songId).genre;
-                    int songYear = userObj.songsList.get(songId).year;
+                    String songName = songEdit.getName();
+                    String songArtist = songEdit.getArtist();
+                    String songAlbum = songEdit.getAlbum();
+                    String songGenre = songEdit.getGenre();
+                    int songYear = songEdit.getYear();
 
-                    HashMap p = new HashMap<>(); // create model hashmap
+                    HashMap p = new HashMap<>();
 
-                    p.put("username", name);
+                    p.put("username", name); // still need to figure out how to just pass the object and reference in html
                     p.put("songName", songName);
                     p.put("songId", songId);
                     p.put("songArtist", songArtist);
                     p.put("songAlbum", songAlbum);
                     p.put("songGenre", songGenre);
                     p.put("songYear", songYear);
-                        return new ModelAndView(p, "edit.html");
+                    return new ModelAndView(p, "edit.html");
 
                 }),
                 new MustacheTemplateEngine()
         );
 
+        Spark.post(
+                "/edit-song/:songId",
+                ((request, response) -> {
+                    Session session = request.session();
+                    String name = session.attribute("username");
+                    int id = Integer.valueOf(request.params("songId"));
+                    User userObj = DataRepository.selectUser(conn, name);
 
-        Spark.get("/delete/:songId" ,
+                    int userId = userObj.getId();
+                    String songName = request.queryParams("songName");
+                    String songArtist = request.queryParams("songArtist");
+                    String songAlbum = request.queryParams("songAlbum");
+                    String songGenre = request.queryParams("songGenre");
+                    int songYear = Integer.valueOf(request.queryParams("songYear"));
+
+                    DataRepository.editSong(conn, userId, id, songName, songArtist, songAlbum, songGenre, songYear);
+
+                    String referrer = request.headers("Referrer");
+                    response.redirect(referrer != null ? referrer : "/");
+                    return "";
+                })
+
+        );
+
+
+        Spark.get("/delete/:songId",
                 ((request, response) -> {
                     Session session = request.session();
                     String name = session.attribute("username");
                     int songId = Integer.valueOf(request.params("songId"));
+                    User userObj = DataRepository.selectUser(conn, name);
 
-                    User userObj = usersMap.get(name);
+                    int userId = userObj.getId();
 
-                    String songName = userObj.songsList.get(songId).name;
-                    String songArtist = userObj.songsList.get(songId).artist;
-                    String songAlbum = userObj.songsList.get(songId).album;
-                    String songGenre = userObj.songsList.get(songId).genre;
-                    int songYear = userObj.songsList.get(songId).year;
+                    Song songObj = DataRepository.selectUserSingleSong(conn, songId, userId);
 
-                    HashMap d = new HashMap<>(); // create model hashmap
+                    String songName = songObj.getName();
+                    String songArtist = songObj.getArtist();
+                    String songAlbum = songObj.getAlbum();
+                    String songGenre = songObj.getGenre();
+                    int songYear = songObj.getYear();
 
-                    d.put("username", name);
+                    HashMap d = new HashMap<>();
+
+                    d.put("username", name); // need to figure out how to pass just object
                     d.put("songName", songName);
                     d.put("songId", songId);
                     d.put("songArtist", songArtist);
@@ -107,164 +212,48 @@ public class Main {
 
 
         Spark.post(
-                "/login",
-                ((request, response) -> {
-                    String name = request.queryParams("loginName");
-                    String password = request.queryParams("password");
-                    User userObj = usersMap.get(name);
-
-                    if ((userObj == null) || (userObj != null && usersMap.get(name).getPassword().equals(password))) {
-                        if (userObj == null) {
-                            userObj = new User(name, password);
-                            usersMap.putIfAbsent(name, userObj);
-                        }
-                        Session session = request.session();
-                        session.attribute("username", name);
-                        response.redirect("/");
-                    } else {
-                        if (usersMap.get(name).getPassword() != password) {
-                            response.redirect("/");
-                        }
-                    }
-                    return "";
-                })
-        );
-
-        Spark.post(
-                "/logout",
-                ((request, response) -> {
-                    Session session = request.session();
-                    session.invalidate();
-                    response.redirect("/");
-                    return "";
-                })
-        );
-
-        Spark.post(
-                "/create-song",
-                ((request, response) -> {
-                    Session session = request.session();
-                    String name = session.attribute("username");
-                    User userObject = usersMap.get(name);
-                    if (userObject == null) { // if no user
-                        throw new Exception("User is not logged in");
-                    }
-
-                    String songName = request.queryParams("songName");
-                    String songArtist = request.queryParams("songArtist");
-                    String songAlbum = request.queryParams("songAlbum");
-                    String songGenre = request.queryParams("songGenre");
-                    int songYear = Integer.valueOf(request.queryParams("songYear"));
-
-                    Song songObj = new Song(songName, songArtist, songAlbum, songGenre, songYear);
-
-                    //Ok - to fix the bug of ids screwing up after deleting an entry.  If the new song created's id is not the max id
-                    // I will make it the current maxId + 1. Find the current maxId, and then increment new song ID by 1
-
-                    int maxId = -1;
-
-                    for(int i = 0; i < userObject.songsList.size();i++) {
-                        if(userObject.songsList.get(i).id > maxId) {
-                            maxId = userObject.songsList.get(i).id;
-                        }
-                    }
-
-//                    ArrayList<Song> userSongstemp = new ArrayList<Song>();
-//                    userSongstemp.add(songObj);
-//
-//                    String whatAmIDoing = String.valueOf(userSongstemp.stream().max(comparing(Song::getId)).get());
-//
-//                    int maxId = whatAmIDoing.charAt(0);
-//
-                    if(songObj.id != maxId+1) {
-                        songObj.id = maxId+1;
-                    }
-
-                    userObject.songsList.add(songObj);
-
-                    response.redirect("/");
-                    return "";
-                })
-        );
-
-        Spark.post(
-                "/edit-song/:songId",
-                ((request, response) -> {
-                    Session session = request.session();
-                    String name = session.attribute("username");
-                    int id = Integer.valueOf(request.params("songId"));
-                    User userObject = usersMap.get(name);
-
-                    String songName = request.queryParams("songName");
-                    String songArtist = request.queryParams("songArtist");
-                    String songAlbum = request.queryParams("songAlbum");
-                    String songGenre = request.queryParams("songGenre");
-                    int songYear = Integer.valueOf(request.queryParams("songYear"));
-
-                    Song editedSong = new Song(songName, songArtist, songAlbum, songGenre, songYear);
-
-                    if(editedSong.id != id) {
-                        editedSong.id = id;
-                    } // to fix the bug of ids changing after song is edited...just revert back to original id
-
-                    userObject.songsList.set(id, editedSong);
-
-                    String referrer = request.headers("Referrer");
-                    response.redirect(referrer != null ? referrer : "/");
-                    return "";
-                })
-
-        );
-
-        Spark.post(
                 "/delete-song/:songId",
                 ((request, response) -> {
                     Session session = request.session();
                     String name = session.attribute("username");
                     int id = Integer.valueOf(request.params("songId"));
-                    User userObject = usersMap.get(name);
+                    User userObj = DataRepository.selectUser(conn, name);
 
-                   //ArrayList<Song> keepSongId = (ArrayList<Song>) userObject.songsList.clone();
+                    int userId = userObj.getId();
 
-                    for(int i = 0; i < userObject.songsList.size(); i++) {
-                        if(userObject.songsList.get(i).id == id) {
-                            userObject.songsList.remove(i);
-                        }
-                    }
-
-                    // in order to keep the ids the same, and not have the list shift up...anything before the deleted item stays the same
-                    // but anything after has to be shifted by -1
-                    for(int i = 0; i < userObject.songsList.size(); i++) {
-                        if(userObject.songsList.get(i).id > id) {
-                            userObject.songsList.get(i).id = userObject.songsList.get(i).id - 1;
-                        }
-                        }
+                    DataRepository.deleteSong(conn, userId, id);
 
                     String referrer = request.headers("Referrer");
                     response.redirect(referrer != null ? referrer : "/");
                     return "";
                 })
+        );
 
+        Spark.post(
+                "/No-delete/:songId",
+                ((request, response) -> {
+
+                    response.redirect("/");
+                    return "";
+                })
+        );
+
+        Spark.get(
+                "/search",
+                ((request, response) -> {
+
+                    String search = request.queryParams("songSearch"); // get the string of what they searched for
+
+                    HashMap s = new HashMap<>();
+                    s.put("searchSong", DataRepository.searchSong(conn, search)); // use my search method and put in hashmap
+
+                    return new ModelAndView(s, "search.html");
+
+                }),
+                new MustacheTemplateEngine()
         );
 
     }
 }
 
 
-
-
-
-
-
-
-
-
-
-// --> "/update-card/:id"
-
-/*
-
-Card card = user.cardList.stream().filter(c -> c.id == Integer.valueOf(request.params(":id"))).findFirst
-
-
- */

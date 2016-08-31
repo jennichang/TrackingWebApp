@@ -28,6 +28,13 @@ Welcome, {{.}}!
     <button type="submit">Submit</button>
 </form>
 {{/username}}
+<br>
+
+<form action="/search" method="get">
+    <input type="text" placeholder="Search songs" name="songSearch" width="400"/>
+    <button type="submit">Search for your song</button>
+</form>
+<br>
 
 <ol>
     {{#songsList}}
