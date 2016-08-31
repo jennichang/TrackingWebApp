@@ -230,7 +230,7 @@ public class Main {
         );
 
         Spark.post(
-                "/No-delete/:songId",
+                "/No-delete/:songId", //return to homepage if they decide not to delete song
                 ((request, response) -> {
 
                     response.redirect("/");
@@ -239,18 +239,27 @@ public class Main {
         );
 
         Spark.get(
-                "/search",
+                "/search-name",
                 ((request, response) -> {
 
                     String search = request.queryParams("songSearch"); // get the string of what they searched for
 
                     HashMap s = new HashMap<>();
-                    s.put("searchSong", DataRepository.searchSong(conn, search)); // use my search method and put in hashmap
+                    s.put("searchSong", DataRepository.searchSongName(conn, search)); // use my search method and put in hashmap
 
                     return new ModelAndView(s, "search.html");
 
                 }),
                 new MustacheTemplateEngine()
+        );
+
+        Spark.post( //back out of search results
+                "/Back",
+                ((request, response) -> {
+
+                    response.redirect("/");
+                    return "";
+                })
         );
 
     }

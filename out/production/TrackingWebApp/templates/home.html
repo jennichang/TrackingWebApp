@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html>
 <body>
+<head>
+    <style>
+body {
+    background-color: AliceBlue;
+}
+</style>
+</head>
 
 {{#username}}
-Welcome, {{.}}!
+<strong>Welcome, {{.}}!</strong>
 <form action="/logout" method="post">
     <button type="submit">Logout</button>
 </form>
@@ -30,9 +37,9 @@ Welcome, {{.}}!
 {{/username}}
 <br>
 
-<form action="/search" method="get">
+<form action="/search-name" method="get">
     <input type="text" placeholder="Search songs" name="songSearch" width="400"/>
-    <button type="submit">Search for your song</button>
+    <button type="submit">Search by song name</button>
 </form>
 <br>
 

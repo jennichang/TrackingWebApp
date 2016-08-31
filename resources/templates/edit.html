@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html>
 <body>
+<head>
+    <style>
+body {
+    background-color: AliceBlue;
+}
+</style>
+</head>
 
 {{#username}}
-Edit your song, {{.}}!
+<strong>Edit your song, {{.}}!</strong>
 <form action="/logout" method="post">
     <button type="submit">Logout</button>
 </form>

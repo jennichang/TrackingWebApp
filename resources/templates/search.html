@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html>
 <body>
+<head>
+    <style>
+body {
+    background-color: AliceBlue;
+}
+</style>
+</head>
 <strong>Below are your search results:</strong>
 <br>
 <br>
@@ -10,6 +17,11 @@
     <li>{{name}} by {{artist}} ( {{album}} ) - {{genre}} - {{year}}
         {{/searchSong}}
 </ol>
+
+<br>
+<form action="/Back" method="post">
+    <button type="submit">Back to song list</button>
+</form>
 
 </body>
 </html>
